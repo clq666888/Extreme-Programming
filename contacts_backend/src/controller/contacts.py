@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
 from database import get_connection
-import sqlite3
 
 contacts_bp = Blueprint('contacts', __name__)
 
@@ -11,86 +10,78 @@ def get_contacts():
     conn = get_connection()
     c = conn.cursor()
     try:
-        query = "SELECT id, name, phone, is_favorite FROM contacts WHERE 1=1"
+        sql = "SELECT id, name, is_favorite FROM contacts WHERE 1=1"
         params = []
         if favorite:
-            query += " AND is_favorite = ?"
-            params.append(True)
+            sql += " AND is_favorite = 1"
         if search:
-            query += " AND (name LIKE ? OR phone LIKE ?)"
-            params.extend([f'%{search}%', f'%{search}%'])
-        c.execute(query, params)
+            sql += " AND (name LIKE ? OR id IN (SELECT contact_id FROM contact_details WHERE value LIKE ?))"
+            params = [f'%{search}%', f'%{search}%']
+        c.execute(sql, params)
         rows = c.fetchall()
-        return jsonify([dict(row) for row in rows])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        result = []
+        for row in rows:
+            contact = dict(row)
+            c.execute("SELECT type, value FROM contact_details WHERE contact_id = ? ORDER BY id", (contact['id'],))
+            contact['details'] = [dict(r) for r in c.fetchall()]
+            result.append(contact)
+        return jsonify(result)
     finally:
         conn.close()
 
 @contacts_bp.route('', methods=['POST'])
-def add_contact():
+def add():
     data = request.json
-    name = data.get("name", "").strip()
-    phone = data.get("phone", "").strip()
-    if not name or not phone:
-        return jsonify({"error": "Name and phone are required"}), 400
+    name = data.get('name','').strip()
+    details = data.get('details', [])
+    if not name or not details:
+        return jsonify({"error": "必填"}), 400
     conn = get_connection()
     c = conn.cursor()
-    try:
-        c.execute("INSERT INTO contacts (name, phone) VALUES (?, ?)", (name, phone))
-        conn.commit()
-        return jsonify({"message": "联系人已添加"}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "Phone number already exists"}), 409
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
+    c.execute("INSERT INTO contacts (name) VALUES (?)", (name,))
+    cid = c.lastrowid
+    for d in details:
+        if d.get('type') and d.get('value'):
+            c.execute("INSERT INTO contact_details (contact_id,type,value) VALUES (?,?,?)",
+                     (cid, d['type'], d['value']))
+    conn.commit()
+    conn.close()
+    return jsonify({"msg": "ok"}), 201
 
-@contacts_bp.route('/<int:contact_id>', methods=['DELETE'])
-def delete_contact(contact_id):
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute("DELETE FROM contacts WHERE id=?", (contact_id,))
-        conn.commit()
-        return jsonify({"message": "联系人已删除"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
-
-@contacts_bp.route('/<int:contact_id>', methods=['PUT'])
-def update_contact(contact_id):
+@contacts_bp.route('/<int:cid>', methods=['PUT'])
+def edit(cid):
     data = request.json
-    name = data.get("name", "").strip()
-    phone = data.get("phone", "").strip()
-    if not name or not phone:
-        return jsonify({"error": "Name and phone are required"}), 400
+    name = data.get('name','').strip()
+    details = data.get('details', [])
+    if not name or not details:
+        return jsonify({"error": "必填"}), 400
     conn = get_connection()
     c = conn.cursor()
-    try:
-        c.execute("UPDATE contacts SET name=?, phone=? WHERE id=?", (name, phone, contact_id))
-        conn.commit()
-        return jsonify({"message": "联系人已修改"}), 200
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "Phone number already exists"}), 409
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
+    c.execute("UPDATE contacts SET name=? WHERE id=?", (name, cid))
+    c.execute("DELETE FROM contact_details WHERE contact_id=?", (cid,))
+    for d in details:
+        if d.get('type') and d.get('value'):
+            c.execute("INSERT INTO contact_details (contact_id,type,value) VALUES (?,?,?)",
+                     (cid, d['type'], d['value']))
+    conn.commit()
+    conn.close()
+    return jsonify({"msg": "ok"})
 
-@contacts_bp.route('/<int:contact_id>/favorite', methods=['PUT'])
-def toggle_favorite(contact_id):
-    data = request.json
-    is_favorite = data.get("is_favorite", False)
+@contacts_bp.route('/<int:cid>', methods=['DELETE'])
+def delete(cid):
     conn = get_connection()
     c = conn.cursor()
-    try:
-        c.execute("UPDATE contacts SET is_favorite=? WHERE id=?", (is_favorite, contact_id))
-        conn.commit()
-        return jsonify({"message": "收藏状态已更新"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
+    c.execute("DELETE FROM contacts WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    return jsonify({"msg": "ok"})
+
+@contacts_bp.route('/<int:cid>/favorite', methods=['PUT'])
+def fav(cid):
+    fav = request.json.get('is_favorite', False)
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("UPDATE contacts SET is_favorite=? WHERE id=?", (1 if fav else 0, cid))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})

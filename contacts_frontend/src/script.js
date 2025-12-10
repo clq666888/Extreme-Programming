@@ -1,142 +1,130 @@
-const API_URL = "http://127.0.0.1:5000/contacts";
-let showFavorites = false;
-let debounceTimer;
+const API = "http://127.0.0.1:5000/contacts";
+let editingId = null;
+let favOnly = false;
 
-async function loadContacts(search = "") {
-    document.getElementById("loading").style.display = "block";
-    const params = new URLSearchParams();
-    if (search) params.append("search", search);
-    if (showFavorites) params.append("favorite", "true");
-    const url = `${API_URL}?${params.toString()}`;
+const types = ['phone', 'email', 'qq', 'weixin', 'address'];
 
+function addRow(type = 'phone', value = '') {
+    const box = document.getElementById('details');
+    const div = document.createElement('div');
+    div.className = 'detail-row';
+    div.innerHTML = `
+        <select>
+            <option value="phone"   ${type==='phone'?'selected':''}>电话</option>
+            <option value="email"    ${type==='email'?'selected':''}>邮箱</option>
+            <option value="qq"       ${type==='qq'?'selected':''}>QQ</option>
+            <option value="weixin"   ${type==='weixin'?'selected':''}>微信</option>
+            <option value="address"  ${type==='address'?'selected':''}>地址</option>
+        </select>
+        <input type="text value="${value.replace(/"/g, '&quot;')}" placeholder="请输入内容">
+        <button type="button" style="background:#f44336;color:#fff;border:none;border-radius:6px;padding:0 12px;cursor:pointer;">删除</button>
+    `;
+    div.querySelector('button').onclick = () => div.remove();
+    box.appendChild(div);
+}
+
+function openModal(id = null, name = '', details = []) {
+    editingId = id;
+    document.getElementById('title').textContent = id ? '编辑联系人' : '添加联系人';
+    document.getElementById('name').value = name || '';
+    document.getElementById('details').innerHTML = '';
+    details.length ? details.forEach(d => addRow(d.type, d.value)) : addRow();
+    document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
+
+async function save() {
+    const name = document.getElementById('name').value.trim();
+    const details = [];
+    document.querySelectorAll('.detail-row').forEach(row => {
+        const type = row.querySelector('select').value;
+        const value = row.querySelector('input').value.trim();
+        if (value) details.push({type, value});
+    });
+    if (!name || details.length === 0) return alert('姓名和至少一个联系方式必填！');
+
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${API}/${editingId}` : API;
+
+    await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, details})});
+    closeModal();
+    load();
+}
+
+async function load() {
     try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Error: ${res.status}`);
+        const p = new URLSearchParams();
+        const s = document.getElementById('search').value.trim();
+        if (s) p.append('search', s);
+        if (favOnly) p.append('favorite','true');
+
+        const res = await fetch(`${API}?${p}`);
+        if (!res.ok) throw new Error(res.status);
         const data = await res.json();
-        const list = document.getElementById("contactList");
-        list.innerHTML = "";
+
+        const ul = document.getElementById('list');
+        ul.innerHTML = '';
+
         data.forEach(c => {
-            const li = document.createElement("li");
-            const span = document.createElement("span");
-            span.textContent = `${c.name} - ${c.phone}`;  // XSS 防护
-            li.appendChild(span);
+            const detailsHtml = c.details?.length ? c.details.map(d => {
+                const label = {phone:'电话', email:'邮箱', qq:'QQ', weixin:'微信', address:'地址'}[d.type] || d.type;
+                return `• ${label}: ${d.value}`;
+            }).join('<br>') : '<span style="color:#aaa">暂无联系方式</span>';
 
-            const buttons = document.createElement("span");
-            buttons.className = "contact-buttons";
-
-            const favoriteBtn = document.createElement("button");
-            favoriteBtn.className = c.is_favorite ? "favorite active" : "favorite";
-            favoriteBtn.textContent = c.is_favorite ? "★" : "☆";
-            favoriteBtn.onclick = () => toggleFavorite(c.id, !c.is_favorite);
-
-            const editBtn = document.createElement("button");
-            editBtn.className = "edit";
-            editBtn.textContent = "Modify";
-            editBtn.onclick = () => editContact(c.id, c.name, c.phone);
-
-            const deleteBtn = document.createElement("button");
-            deleteBtn.className = "delete";
-            deleteBtn.textContent = "Delete";
-            deleteBtn.onclick = () => deleteContact(c.id);
-
-            buttons.append(favoriteBtn, editBtn, deleteBtn);
-            li.appendChild(buttons);
-            list.appendChild(li);
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong style="font-size:19px">${c.name}</strong>
+                    <div class="details" style="margin-top:8px;line-height:1.7">${detailsHtml}</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="fav-btn ${c.is_favorite ? 'active' : ''}" data-id="${c.id}">
+                        ${c.is_favorite ? '⭐' : '☆'}
+                    </button>
+                    <button class="edit"   data-id="${c.id}" data-name="${c.name}" data-details='${JSON.stringify(c.details)}'>编辑</button>
+                    <button class="delete" data-id="${c.id}">删除</button>
+                </div>
+            `;
+            ul.appendChild(li);
         });
-    } catch (error) {
-        alert(`Failed to load contacts: ${error.message}`);
-    } finally {
-        document.getElementById("loading").style.display = "none";
-    }
-}
 
-async function addContact() {
-    const name = document.getElementById("name").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    if (!name || !phone) {
-        alert("Please enter name and phone");
-        return;
-    }
-    try {
-        const res = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, phone })
-        });
-        if (!res.ok) throw new Error(await res.json().error);
-        document.getElementById("name").value = "";
-        document.getElementById("phone").value = "";
-        loadContacts();
-    } catch (error) {
-        alert(`Failed to add contact: ${error.message}`);
-    }
-}
+        // 事件委托：收藏、编辑、删除全搞定
+        ul.onclick = e => {
+            const t = e.target;
+            if (t.classList.contains('fav-btn')) {
+                const id = t.dataset.id;
+                const willFav = !t.classList.contains('active');
+                fetch(`${API}/${id}/favorite`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({is_favorite: willFav})
+                }).then(() => load());
+            }
+            if (t.classList.contains('edit')) {
+                openModal(+t.dataset.id, t.dataset.name, JSON.parse(t.dataset.details||'[]'));
+            }
+            if (t.classList.contains('delete') && confirm('确定删除？')) {
+                fetch(`${API}/${t.dataset.id}`, {method:'DELETE'}).then(() => load());
+            }
+        };
 
-async function deleteContact(id) {
-    if (!confirm("Are you sure?")) return;
-    try {
-        const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error(await res.json().error);
-        loadContacts();
-    } catch (error) {
-        alert(`Failed to delete: ${error.message}`);
+    } catch (err) {
+        document.getElementById('list').innerHTML = '<li style="color:red;text-align:center">连接失败：请确认 Flask 后端正在运行</li>';
     }
-}
-
-async function editContact(id, currentName, currentPhone) {
-    const newName = prompt("Enter new name:", currentName);
-    const newPhone = prompt("Enter new phone:", currentPhone);
-    if (newName && newPhone) {
-        try {
-            const res = await fetch(`${API_URL}/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newName.trim(), phone: newPhone.trim() })
-            });
-            if (!res.ok) throw new Error(await res.json().error);
-            loadContacts();
-        } catch (error) {
-            alert(`Failed to update: ${error.message}`);
-        }
-    }
-}
-
-async function toggleFavorite(id, is_favorite) {
-    try {
-        const res = await fetch(`${API_URL}/${id}/favorite`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_favorite })
-        });
-        if (!res.ok) throw new Error(await res.json().error);
-        loadContacts();
-    } catch (error) {
-        alert(`Failed to toggle favorite: ${error.message}`);
-    }
-}
-
-function debounceSearch() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        loadContacts(document.getElementById("searchInput").value);
-    }, 300);
 }
 
 // 事件绑定
-document.getElementById("addBtn").onclick = addContact;
-document.getElementById("searchBtn").onclick = () => loadContacts(document.getElementById("searchInput").value);
-document.getElementById("resetBtn").onclick = () => {
-    document.getElementById("searchInput").value = "";
-    loadContacts();
-};
-document.getElementById("showFavoritesBtn").onclick = () => {
-    showFavorites = true;
-    loadContacts();
-};
-document.getElementById("showAllBtn").onclick = () => {
-    showFavorites = false;
-    loadContacts();
-};
-document.getElementById("searchInput").oninput = debounceSearch;
+document.getElementById('addBtn').onclick = () => openModal();
+document.getElementById('addField').onclick = () => addRow();
+document.getElementById('save').onclick = save;
+document.getElementById('cancel').onclick = closeModal;
+document.querySelector('.close').onclick = closeModal;
+document.querySelector('.toolbar button:nth-child(2)').onclick = load;
+document.querySelectorAll('.toolbar .reset')[0].onclick = () => {document.getElementById('search').value=''; load();};
+document.getElementById('favOnly').onclick = () => {favOnly=true; load();};
+document.getElementById('showAll').onclick = () => {favOnly=false; load();};
 
-loadContacts();
+load();

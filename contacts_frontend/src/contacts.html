@@ -1,34 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Contacts Manager</title>
+    <title>联系人管理器</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>📒 Contacts Manager</h1>
+        <h1>联系人管理器</h1>
+        <button id="addBtn" class="btn">+ 添加联系人</button>
 
-        <div class="form-container">
-            <input type="text" id="name" placeholder="Name">
-            <input type="text" id="phone" placeholder="Phone">
-            <button id="addBtn" class="btn">Add Contact</button>
+        <div class="toolbar">
+            <input type="text" id="search" placeholder="搜索姓名或联系方式">
+            <button class="btn">搜索</button>
+            <button class="btn reset">重置</button>
+            <button class="btn" id="favOnly">只看收藏</button>
+            <button class="btn reset" id="showAll">显示全部</button>
         </div>
 
-        <div class="form-container">
-            <input type="text" id="searchInput" placeholder="Search by name or phone">
-            <button id="searchBtn" class="btn">Search</button>
-            <button id="resetBtn" class="btn reset">Reset</button>
-        </div>
+        <ul id="list"></ul>
+    </div>
 
-        <div class="form-container">
-            <button id="showFavoritesBtn" class="btn">Show Favorites</button>
-            <button id="showAllBtn" class="btn reset">Show All</button>
+    <!-- 模态框 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2 id="title">添加联系人</h2>
+            <input type="text" id="name" placeholder="姓名">
+            <div id="details"></div>
+            <button id="addField" class="btn small">+ 添加联系方式</button>
+            <div class="actions">
+                <button id="save" class="btn">保存</button>
+                <button id="cancel" class="btn reset">取消</button>
+            </div>
         </div>
-
-        <h2>Contacts List</h2>
-        <div id="loading" style="display: none;">Loading...</div>
-        <ul id="contactList"></ul>
     </div>
 
     <script src="script.js"></script>
