@@ -1,7 +1,6 @@
 const API = "http://127.0.0.1:5000/contacts";
 let editingId = null;
 let favOnly = false;
-
 const types = ['phone', 'email', 'qq', 'weixin', 'address'];
 
 function addRow(type = 'phone', value = '') {
@@ -16,7 +15,7 @@ function addRow(type = 'phone', value = '') {
             <option value="weixin"   ${type==='weixin'?'selected':''}>微信</option>
             <option value="address"  ${type==='address'?'selected':''}>地址</option>
         </select>
-        <input type="text value="${value.replace(/"/g, '&quot;')}" placeholder="请输入内容">
+        <input type="text" value="${value.replace(/"/g, '&quot;')}" placeholder="请输入内容">
         <button type="button" style="background:#f44336;color:#fff;border:none;border-radius:6px;padding:0 12px;cursor:pointer;">删除</button>
     `;
     div.querySelector('button').onclick = () => div.remove();
@@ -91,17 +90,13 @@ async function load() {
             ul.appendChild(li);
         });
 
-        // 事件委托：收藏、编辑、删除全搞定
         ul.onclick = e => {
             const t = e.target;
             if (t.classList.contains('fav-btn')) {
                 const id = t.dataset.id;
                 const willFav = !t.classList.contains('active');
-                fetch(`${API}/${id}/favorite`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({is_favorite: willFav})
-                }).then(() => load());
+                fetch(`${API}/${id}/favorite`, {method: 'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({is_favorite: willFav})})
+                    .then(() => load());
             }
             if (t.classList.contains('edit')) {
                 openModal(+t.dataset.id, t.dataset.name, JSON.parse(t.dataset.details||'[]'));
@@ -115,6 +110,45 @@ async function load() {
         document.getElementById('list').innerHTML = '<li style="color:red;text-align:center">连接失败：请确认 Flask 后端正在运行</li>';
     }
 }
+
+// 导出 Excel
+document.getElementById('exportBtn').onclick = async () => {
+    try {
+        const res = await fetch(`${API}/export`);
+        if (!res.ok) throw new Error(res.status);
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contacts.xlsx';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        alert('导出失败，请确认后端接口可用');
+    }
+};
+
+// 导入 Excel
+document.getElementById('importBtn').onclick = () => {
+    document.getElementById('importFile').click();
+};
+
+document.getElementById('importFile').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch(`${API}/import`, {method:'POST', body:formData});
+        if (!res.ok) throw new Error(res.status);
+        alert('导入成功');
+        load();
+    } catch (err) {
+        alert('导入失败，请确认 Excel 格式正确');
+    }
+    e.target.value = '';  // 清空选择
+};
 
 // 事件绑定
 document.getElementById('addBtn').onclick = () => openModal();
