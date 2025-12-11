@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>联系人管理器</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>联系人管理器</h1>
+        <button id="addBtn" class="btn">+ 添加联系人</button>
+        <button id="exportBtn" class="btn">导出 Excel</button>
+        <input type="file" id="importFile" style="display:none">
+        <button id="importBtn" class="btn">导入 Excel</button>
+
+        <div class="toolbar">
+            <input type="text" id="search" placeholder="搜索姓名或联系方式">
+            <button class="btn">搜索</button>
+            <button class="btn reset">重置</button>
+            <button class="btn" id="favOnly">只看收藏</button>
+            <button class="btn reset" id="showAll">显示全部</button>
+        </div>
+
+        <ul id="list"></ul>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">×</span>
+            <h2 id="title">添加联系人</h2>
+            <input type="text" id="name" placeholder="姓名">
+            <div id="details"></div>
+            <button id="addField" class="btn small">+ 添加联系方式</button>
+            <div class="actions">
+                <button id="save" class="btn">保存</button>
+                <button id="cancel" class="btn reset">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+body{font-family:Segoe UI,Arial,sans-serif;background:#f5f7fa;margin:0;padding:20px 0;display:flex;justify-content:center}
+.container{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1);width:560px;padding:30px}
+h1{text-align:center;color:#333;margin-bottom:30px}
+.btn{background:#4caf50;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;margin:5px}
+.btn:hover{opacity:.9}
+.reset{background:#f44336}
+.small{padding:8px 12px;font-size:14px}
+.toolbar{margin:20px 0;display:flex;flex-wrap:wrap;gap:8px}
+#search{flex:1;padding:12px;border-radius:8px;border:1px solid #ddd}
+ul{list-style:none;padding:0}
+li{background:#fff;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.08);display:flex;justify-content:space-between;align-items:flex-start}
+li strong{font-size:18px}
+.details{margin:8px 0 0 20px;color:#555}
+.details div{margin:4px 0}
+.fav{font-size:28px;background:none;border:none;cursor:pointer}
+.fav.active{color:#FFD700}
+.edit,.delete{margin-left:8px;padding:8px}
+
+/* 模态框 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);justify-content:center;align-items:center}
+.modal-content{background:#fff;padding:30px;border-radius:16px;width:90%;max-width:520px;position:relative}
+.close{position:absolute;right:15px;top:10px;font-size:30px;cursor:pointer}
+#details{margin:15px 0}
+.detail-row{display:flex;gap:8px;margin:8px 0}
+.detail-row select,.detail-row input{flex:1;padding:10px;border-radius:8px;border:1px solid #ddd}
+.detail-row button{background:#f44336;color:#fff;border:none;border-radius:8px;padding:0 15px}
+.actions{text-align:right;margin-top:20px}
+.details {
+    margin-top: 10px;
+    color: #555;
+    line-height: 1.7;
+    font-size: 15px;
+}
+.detail-row {
+    margin: 10px 0;
+}
+.fav-btn {
+    background: none;
+    border: none;
+    font-size: 28px;  /* 调大星星大小 */
+    cursor: pointer;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;  /* 未收藏时的灰色 */
+    transition: transform 0.2s;
+}
+
+.fav-btn:hover {
+    transform: scale(1.2);  /* 悬停时放大效果 */
+}
+
+.fav-btn.active {
+    color: #FFD700;  /* 已收藏时的金色 */
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);  /* 发光效果 */
+}

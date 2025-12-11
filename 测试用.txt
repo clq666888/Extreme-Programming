@@ -1,0 +1,17 @@
+云端网址：
+http://120.26.174.47:5000/
+
+
+云端文件结构
+832301212_contacts_cloud/
+├─ controller/
+│  └─ contacts.py
+├─ static/
+│  ├─ script.js
+│  └─ style.css
+├─ templates/
+│  └─ contacts.html
+├─ app.py
+├─ contacts.db
+├─ database.py
+└─ requirements.txt
